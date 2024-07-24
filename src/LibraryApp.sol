@@ -9,6 +9,7 @@ contract LibraryApp {
     
     // Enums
     enum BookStatus {
+        New,
         Available,
         Borrowed,
         Unavailable,
@@ -66,9 +67,10 @@ contract LibraryApp {
         string memory _isbn, 
         string memory _title, 
         string memory _author, 
-        address _owner, 
-        BookStatus _status) 
-        private {
+        address _owner) 
+        public {
+            require(libraryOwner == msg.sender);
+            
             // Increment the book ID counter
             bookIdCounter++;
 
@@ -79,7 +81,7 @@ contract LibraryApp {
                 title: _title,
                 author: _author,
                 owner: _owner,
-                status: _status
+                status: BookStatus.New
             });
             books.push(newBook);
 
@@ -88,7 +90,7 @@ contract LibraryApp {
         }
 
     // Update Book Status: 0-Available, 1-Borrowed, 2-Removed (requires min 2 sigs)
-    function updateBookStatus(uint _id, BookStatus _status) private {
+    function updateBookStatus(uint _id, BookStatus _status) public {
         Book storage book = books[_id];
         book.status = _status;
     }
@@ -98,7 +100,7 @@ contract LibraryApp {
     string memory _fname, 
     string memory _lname, 
     MemberStatus _status) 
-    private {
+    public {
         // Increment the book ID counter
         memberIdCounter++;
 
@@ -112,18 +114,21 @@ contract LibraryApp {
         });
         members.push(newMember);
 
-        // Map the member ID to the Member struct for easy lookup
+        // Map the member ID to the Member struct for easy lookup 
         memberById[memberIdCounter] = newMember;
     }
 
     // Update Member Status: 0-Good, 1-Suspended (requires min 2 sigs), 3-Removed (requires min 2 sigs)
-    function updateMemberStatus(uint _id, MemberStatus _status) private {
+    function updateMemberStatus(uint _id, MemberStatus _status) public {
+        require(libraryOwner == msg.sender);
+
         Member storage member = members[_id];
         member.status = _status;
     }
 
     // Remote LibraryApp Admins
-    function removeLibraryAdmins(uint _index) private {
+    function removeLibraryAdmins(uint _index) public {
+        require(libraryOwner == msg.sender);
         require(_index < libraryAdmins.length, "index out of bound");
 
         for (uint256 i = _index; i < libraryAdmins.length - 1; i++) {
