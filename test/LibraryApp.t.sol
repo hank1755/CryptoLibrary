@@ -24,7 +24,7 @@ contract LibraryAppTest is Test {
         assertEq(libraryApp.libraryOwner(), libraryOwner);
     }
 
-    function testAddBookSuccess() public {
+    function testAddBook() public {
         // Define book details
         string memory isbn = "978-0735200661";
         string memory title = "Technical Analysis of the Financial Markets";
