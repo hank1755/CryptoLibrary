@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 
 // Create a Library App NFT 1155 per book 
 // CRUD capable requ min 2 of 3 sigs
-// Use API from https://openlibrary.org/dev/docs/api/books
 
 contract LibraryApp {
     
@@ -24,65 +23,45 @@ contract LibraryApp {
 
     // Structs
     struct Book {
+        uint id;
         string isbn;
         string title;
         string author;
         address owner; // default owner library contract or borrower
-        BookStatus status; // 0-Available, 1-Borrowed, 2-Unavailable, 3-Purged
+        BookStatus status; // 0-Available, 1-Borrowed, 2-Removed (requires min 2 sigs)
     }
 
     struct Member {
+        uint id;
         address memberAddr;
         string fname;
         string lname;
-        MemberStatus status; // 0-Good, 1-Suspended, 3-Purged
+        MemberStatus status; // 0-Good, 1-Suspended (requires min 2 sigs), 3-Removed (requires min 2 sigs)
     }
 
     // Variables
     Book[] public books;
     Member[] public members;
     address public libraryOwner; // Library Owner
-    address[] public libraryAdmins; // Library Admins
-    uint private bookIdCounter; // Counter to generate unique book IDs
+    address[] public libraryAdmins; // Library Admins (max 3)
+    uint public bookIdCounter; // Counter to generate unique book IDs
+    uint public memberIdCounter; // Counter to generate unique member IDs
     
     // Mappings
     mapping(uint => Book) public bookById; // Map book ID to Book struct
+    mapping(uint => Member) public memberById; // Map member ID to Member struct
 
-    constructor(address[] memory _libraryAdmins) {
+    constructor(address[] memory _admins) {
         libraryOwner = msg.sender;
         
         // Loop through the input array and push each admin address individually
-        for (uint i = 0; i < _libraryAdmins.length; i++) {
-            libraryAdmins.push(_libraryAdmins[i]);
+        for (uint i = 0; i < _admins.length; i++) {
+           libraryAdmins.push(_admins[i]);
         }
-    }
-
-    // Helper function to generate a unique ISBN string
-    function generateUniqueIsbn(uint _isbn, uint _counter) private pure returns (string memory) {
-        return string(abi.encodePacked(_isbn, "-", uintToString(_counter)));
-    }
-
-    // Helper function to convert uint to string
-    function uintToString(uint _value) private pure returns (string memory) {
-        if (_value == 0) {
-            return "0";
-        }
-        uint temp = _value;
-        uint digits;
-        while (temp != 0) {
-            digits++;
-            temp /= 10;
-        }
-        bytes memory buffer = new bytes(digits);
-        while (_value != 0) {
-            digits -= 1;
-            buffer[digits] = bytes1(uint8(48 + uint(_value % 10)));
-            _value /= 10;
-        }
-        return string(buffer);
     }
 
     // Create Book Function: javascript-search book api & add to library, mapping
+    // Use API from https://openlibrary.org/dev/docs/api/books
     function addBook(
         string memory _isbn, 
         string memory _title, 
@@ -93,48 +72,63 @@ contract LibraryApp {
             // Increment the book ID counter
             bookIdCounter++;
 
-            // Generate a unique ISBN string
-            string memory uniqueIsbn = string(abi.encodePacked(_isbn, "-", uintToString(bookIdCounter)));
-
             // initialize an empty struct and then update it
             Book memory newBook = Book({
-            isbn : uniqueIsbn,
-            title : _title,
-            author : _author,
-            owner : _owner,
-            status : _status
+                id: bookIdCounter,
+                isbn: _isbn,
+                title: _title,
+                author: _author,
+                owner: _owner,
+                status: _status
             });
             books.push(newBook);
 
-            // Map the book ID to the book struct for easy lookup
+            // Map the book ID to the Book struct for easy lookup
             bookById[bookIdCounter] = newBook;
         }
 
-    // Search for books by isbn
-    function searchBookIsbn(uint _isbn) public view returns (
-        string memory,
-        string memory, 
-        string memory, 
-        address, 
-        BookStatus) {
-            Book storage book = books[_isbn];
-            return (
-                book.isbn,
-                book.title,
-                book.author,
-                book.owner,
-                book.status);
+    // Update Book Status: 0-Available, 1-Borrowed, 2-Removed (requires min 2 sigs)
+    function updateBookStatus(uint _id, BookStatus _status) private {
+        Book storage book = books[_id];
+        book.status = _status;
+    }
+
+    // Add Library Member Function
+    function joinLibrary(
+    string memory _fname, 
+    string memory _lname, 
+    MemberStatus _status) 
+    private {
+        // Increment the book ID counter
+        memberIdCounter++;
+
+        // initialize an empty struct and then update it
+        Member memory newMember = Member({
+            id: memberIdCounter,
+            memberAddr: msg.sender,
+            fname: _fname,
+            lname: _lname,
+            status: _status
+        });
+        members.push(newMember);
+
+        // Map the member ID to the Member struct for easy lookup
+        memberById[memberIdCounter] = newMember;
+    }
+
+    // Update Member Status: 0-Good, 1-Suspended (requires min 2 sigs), 3-Removed (requires min 2 sigs)
+    function updateMemberStatus(uint _id, MemberStatus _status) private {
+        Member storage member = members[_id];
+        member.status = _status;
+    }
+
+    // Remote LibraryApp Admins
+    function removeLibraryAdmins(uint _index) private {
+        require(_index < libraryAdmins.length, "index out of bound");
+
+        for (uint256 i = _index; i < libraryAdmins.length - 1; i++) {
+            libraryAdmins[i] = libraryAdmins[i + 1];
         }
-
-    // Update Book Function: check-in, check-out, purge from library
-    //function updateBookStatus(uint _id, BookStatus _status) private {
-    //    Book storage book = books[_isbn];
-    //}
-
-    // Delete Book Function: maintenance admin function, 2 of 3 sigs required
-
-    // Create Library Member Function: generate random guid or use chainlink random
-    // Read Library Member Function
-    // Update Library Member Function
-    // Delete Library Member Function
+        libraryAdmins.pop();
+    }
 }
