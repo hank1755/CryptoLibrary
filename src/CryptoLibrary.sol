@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.18;
+pragma solidity 0.8.20;
+
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import {PriceConverter} from "./PriceConverter.sol";
 
 contract CryptoLibrary {
+    error CryptoLibrary__NotOwner();
+
     // Enums
     enum BookStatus {
         Available,
@@ -35,19 +40,31 @@ contract CryptoLibrary {
         uint[] checkedOutBookIds; // Array to track checked-out book IDs
     }
 
-    // Variables
+    // State Variables
     Book[] public books;
     Member[] public members;
     address public libraryOwner;
     uint public bookIdCounter;
     uint public memberIdCounter;
 
+    // Modifiers
+    modifier onlyOwner() {
+        // require(msg.sender == libraryOwner);
+        if (msg.sender != libraryOwner) revert CryptoLibrary__NotOwner();
+        _;
+    }
+
     // Mappings
     mapping(uint => Book) public bookById;
     mapping(address => Member) public memberByAddress;
+    mapping(address => bool) public libraryAdmins;
 
-    constructor() {
+    constructor(address[] memory _libraryAdmins) {
         libraryOwner = msg.sender;
+
+        for (uint i = 0; i < _libraryAdmins.length; i++) {
+            libraryAdmins[_libraryAdmins[i]] = true;
+        }
     }
 
     // Add a new book
@@ -55,7 +72,7 @@ contract CryptoLibrary {
         string memory _isbn,
         string memory _title,
         string memory _author
-    ) public {
+    ) public onlyOwner {
         bookIdCounter++;
         books.push(
             Book({

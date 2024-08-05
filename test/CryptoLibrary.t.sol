@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
-
-pragma solidity ^0.8.20;
+pragma solidity 0.8.20;
 
 import "../lib/forge-std/src/Test.sol";
 import {CryptoLibrary} from "../src/CryptoLibrary.sol";
 
 contract CryptoLibraryTest is Test {
-    CryptoLibrary public cryptoLibrary;
+    CryptoLibrary public cryptolibrary;
     address private libraryOwner =
         address(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
     address[] private admins = [
@@ -17,19 +16,16 @@ contract CryptoLibraryTest is Test {
 
     function setUp() public {
         vm.startPrank(libraryOwner); // Start impersonating an address for transactions
-        cryptoLibrary = new CryptoLibrary(
-            admins,
-            0x694AA1769357215DE4FAC081bf1f309aDC325306
-        ); // AggregatorV3Interface address
+        cryptolibrary = new CryptoLibrary(admins); // AggregatorV3Interface address
         vm.stopPrank(); // Stop impersonating
     }
 
     function testDeployment() public view {
         // Verify that the contract address is not zero
-        assert(address(cryptoLibrary) != address(0));
+        assert(address(cryptolibrary) != address(0));
 
         // Verify that the contract owner is correctly set
-        assertEq(cryptoLibrary.libraryOwner(), libraryOwner);
+        assertEq(cryptolibrary.libraryOwner(), libraryOwner);
     }
 
     function testAddBook() public {
@@ -37,15 +33,15 @@ contract CryptoLibraryTest is Test {
         string memory isbn = "978-0735200661";
         string memory title = "Technical Analysis of the Financial Markets";
         string memory author = "John J. Murphy";
-        address bookOwner = address(cryptoLibrary);
+        address bookOwner = address(cryptolibrary);
 
         // Call addBook
         vm.startPrank(libraryOwner); // Impersonate the owner to call the private function
-        cryptoLibrary.addBook(isbn, title, author, bookOwner);
+        cryptolibrary.addBook(isbn, title, author);
         vm.stopPrank();
 
         // Verify the book count
-        uint256 expectedBookId = cryptoLibrary.bookIdCounter(); // Use getter for public variable
+        uint256 expectedBookId = cryptolibrary.bookIdCounter(); // Use getter for public variable
         assertEq(expectedBookId, 1, "Book ID counter should be 1");
 
         // Retrieve the added book from the books array using the bookIdCounter
@@ -56,7 +52,7 @@ contract CryptoLibraryTest is Test {
             string memory bookAuthor,
             address bookAddr,
             CryptoLibrary.BookStatus bookStatus
-        ) = cryptoLibrary.bookById(expectedBookId);
+        ) = cryptolibrary.bookById(expectedBookId);
 
         // Verify book details
         assertEq(id, 1, "Book ID should be 1");
@@ -78,7 +74,7 @@ contract CryptoLibraryTest is Test {
         assertEq(address(bookAddr), address(bookOwner), "Owner should match");
         assertEq(
             uint(bookStatus),
-            uint(CryptoLibrary.BookStatus.New),
+            uint(CryptoLibrary.BookStatus.Available),
             "Status should match"
         );
     }
@@ -88,15 +84,15 @@ contract CryptoLibraryTest is Test {
         string memory isbn = "978-0735200661";
         string memory title = "Technical Analysis of the Financial Markets";
         string memory author = "John J. Murphy";
-        address bookOwner = address(cryptoLibrary);
+        address bookOwner = address(cryptolibrary);
 
         // Call addBook
         vm.startPrank(libraryOwner); // Impersonate the owner to call the private function
-        cryptoLibrary.addBook(isbn, title, author, bookOwner);
+        cryptolibrary.addBook(isbn, title, author);
         vm.stopPrank();
 
         // Verify the book count
-        uint256 expectedBookId = cryptoLibrary.bookIdCounter(); // Use getter for public variable
+        uint256 expectedBookId = cryptolibrary.bookIdCounter(); // Use getter for public variable
         assertEq(expectedBookId, 1, "Book ID counter should be 1");
 
         // Retrieve the added book from the books array using the bookIdCounter
@@ -107,7 +103,7 @@ contract CryptoLibraryTest is Test {
             string memory bookAuthor,
             address bookAddr,
             CryptoLibrary.BookStatus bookStatus
-        ) = cryptoLibrary.bookById(expectedBookId);
+        ) = cryptolibrary.bookById(expectedBookId);
 
         // Verify book details
         assertEq(id, 1, "Book ID should be 1");
@@ -129,7 +125,7 @@ contract CryptoLibraryTest is Test {
         assertEq(address(bookAddr), address(bookOwner), "Owner should match");
         assertEq(
             uint(bookStatus),
-            uint(CryptoLibrary.BookStatus.New),
+            uint(CryptoLibrary.BookStatus.Available),
             "Status should match"
         );
     }
