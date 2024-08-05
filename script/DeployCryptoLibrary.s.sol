@@ -3,12 +3,16 @@
 pragma solidity ^0.8.0;
 
 import {Script} from "../lib/forge-std//src/Script.sol";
-import {LibraryApp} from "../src/LibraryApp.sol";
+import {CryptoLibrary} from "../src/CryptoLibrary.sol";
 
-contract DeployLibraryApp is Script {
-    function run() external returns(LibraryApp) {
+contract DeployCryptoLibrary is Script {
+    CryptoLibrary public cryptolibrary;
+
+    function setup() public {}
+
+    function run() public {
         vm.startBroadcast();
-        
+
         // Declare the LibraryApp libraryAdmins
         address[] memory admins = new address[](3);
         admins[0] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
@@ -16,9 +20,7 @@ contract DeployLibraryApp is Script {
         admins[2] = 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC;
 
         // Deploy the LibraryApp contract with three addresses
-        LibraryApp libraryApp = new LibraryApp(admins);
+        cryptolibrary = new CryptoLibrary(admins);
         vm.stopBroadcast();
-        return libraryApp;
     }
 }
-
