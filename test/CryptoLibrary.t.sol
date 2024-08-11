@@ -3,20 +3,22 @@ pragma solidity 0.8.20;
 
 import "../lib/forge-std/src/Test.sol";
 import {CryptoLibrary} from "../src/CryptoLibrary.sol";
+import {DeployCryptoLibrary} from "../script/DeployCryptoLibrary.s.sol";
 
 contract CryptoLibraryTest is Test {
     CryptoLibrary public cryptolibrary;
     address private libraryOwner =
         address(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
-    address[] private admins = [
-        address(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266),
+    address[3] private libraryAdmins = [
         address(0x70997970C51812dc3A010C7d01b50e0d17dc79C8),
-        address(0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC)
+        address(0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC),
+        address(0x90F79bf6EB2c4f870365E785982E1f101E93b906)
     ];
+    string[3] private nickNames = ["bob", "jon", "luci"];
 
     function setUp() public {
         vm.startPrank(libraryOwner); // Start impersonating an address for transactions
-        cryptolibrary = new CryptoLibrary(admins); // AggregatorV3Interface address
+        cryptolibrary = new CryptoLibrary(libraryAdmins, nickNames); // Add AggregatorV3Interface address
         vm.stopPrank(); // Stop impersonating
     }
 

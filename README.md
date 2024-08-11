@@ -1,66 +1,41 @@
-## Foundry
+## Crypto Library Project Summary
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+**Admins:** Generate an NFT representing each added book in the library from OpenLibrary and manage library members
 
-Foundry consists of:
+**Users:** Check-out/Check-in NFT of available books in the library and manage their membership
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+### Frontend: Python Classic & Responsive React
 
-## Documentation
+Use open library api to search books by ISBN and get the books data:
 
-https://book.getfoundry.sh/
+* picture
+* title
+* author
 
-## Usage
+Users will have the following functions:
 
-### Build
+* Join the Crypto Library
+* Search for books owned by the library by isbn, title, author and books they have checked out
+* Check books out/in
 
-```shell
-$ forge build
-```
+Admins will have all User functions plus:
 
-### Test
+* Search for books owned by the library by status and owner
 
-```shell
-$ forge test
-```
+### Backend: Solidity Contract Functions
 
-### Format
+Member functions:
 
-```shell
-$ forge fmt
-```
+* joinLibrary: join the Crypto Library
+* checkoutBook: check-out NFT book
+* returnBook: return checked-out NFT book
 
-### Gas Snapshots
+Admin functions:
 
-```shell
-$ forge snapshot
-```
+* addMember: Admin function: add member to Crypto Library
+* addBook: Admin function: add new book to library
 
-### Anvil
+Roadmap:
 
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+* Add ETH deposit for check-out & refund on return
+* Research if way to auto return NFT via expiry

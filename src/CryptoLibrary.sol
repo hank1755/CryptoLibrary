@@ -21,6 +21,12 @@ contract CryptoLibrary {
         Purged
     }
 
+    enum MemberRole {
+        Member,
+        Admin,
+        Owner
+    }
+
     // Structs
     struct Book {
         uint id;
@@ -34,8 +40,8 @@ contract CryptoLibrary {
     struct Member {
         uint id;
         address memberAddr;
-        string fname;
-        string lname;
+        string nickName;
+        MemberRole role; // 0-Member, 1-Admin, 2-Owner
         MemberStatus status; // 0-Good, 1-Suspended (requires min 2 sigs), 3-Removed (requires min 2 sigs)
         uint[] checkedOutBookIds; // Array to track checked-out book IDs
     }
@@ -57,13 +63,12 @@ contract CryptoLibrary {
     // Mappings
     mapping(uint => Book) public bookById;
     mapping(address => Member) public memberByAddress;
-    mapping(address => bool) public libraryAdmins;
 
-    constructor(address[] memory _libraryAdmins) {
+    constructor(address[3] memory _adminAddr, string[3] memory _nickName) {
         libraryOwner = msg.sender;
 
-        for (uint i = 0; i < _libraryAdmins.length; i++) {
-            libraryAdmins[_libraryAdmins[i]] = true;
+        for (uint i = 0; i < _adminAddr.length; i++) {
+            addMember(_adminAddr[i], _nickName[i], MemberRole.Admin); // 0-Member, 1-Admin, 2-Owner
         }
     }
 
@@ -87,21 +92,37 @@ contract CryptoLibrary {
         bookById[bookIdCounter] = books[bookIdCounter - 1];
     }
 
-    // Join library as a new member
-    function addMember(
-        string memory _fname,
-        string memory _lname,
-        uint256[] memory _checkedOutBookIds
-    ) public {
+    // Self Service: Join Library
+    function joinLibrary(string memory _nickName) public {
         memberIdCounter++;
         members.push(
             Member({
                 id: memberIdCounter,
                 memberAddr: msg.sender,
-                fname: _fname,
-                lname: _lname,
+                nickName: _nickName,
                 status: MemberStatus.Good,
-                checkedOutBookIds: _checkedOutBookIds // Initialize with an empty array
+                role: MemberRole.Member,
+                checkedOutBookIds: new uint[](0)
+            })
+        );
+        memberByAddress[msg.sender] = members[memberIdCounter - 1];
+    }
+
+    // Add Member
+    function addMember(
+        address _memberAddr,
+        string memory _nickName,
+        MemberRole _role
+    ) public onlyOwner {
+        memberIdCounter++;
+        members.push(
+            Member({
+                id: memberIdCounter,
+                memberAddr: _memberAddr,
+                nickName: _nickName,
+                status: MemberStatus.Good,
+                role: _role, // 0-Member, 1-Admin, 2-Owner
+                checkedOutBookIds: new uint[](0)
             })
         );
         memberByAddress[msg.sender] = members[memberIdCounter - 1];
