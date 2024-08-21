@@ -53,6 +53,18 @@ contract CryptoLibrary {
     uint public bookIdCounter;
     uint public memberIdCounter;
 
+    // Events
+    event MemberJoined(address indexed member, string nickname, uint memberId);
+    event MemberAdded(address indexed member, string nickname, uint memberId);
+    event BookAdded(
+        uint indexed bookId,
+        string isbn,
+        string title,
+        string author
+    );
+    event BookCheckedOut(uint indexed bookId, address indexed member);
+    event BookCheckedIn(uint indexed bookId, address indexed member);
+
     // Modifiers
     modifier onlyOwner() {
         // require(msg.sender == libraryOwner);
@@ -72,26 +84,6 @@ contract CryptoLibrary {
         }
     }
 
-    // Add a new book
-    function addBook(
-        string memory _isbn,
-        string memory _title,
-        string memory _author
-    ) public onlyOwner {
-        bookIdCounter++;
-        books.push(
-            Book({
-                id: bookIdCounter,
-                isbn: _isbn,
-                title: _title,
-                author: _author,
-                owner: address(this), // Initially owned by the library
-                status: BookStatus.Available
-            })
-        );
-        bookById[bookIdCounter] = books[bookIdCounter - 1];
-    }
-
     // Self Service: Join Library
     function joinLibrary(string memory _nickName) public {
         memberIdCounter++;
@@ -106,6 +98,8 @@ contract CryptoLibrary {
             })
         );
         memberByAddress[msg.sender] = members[memberIdCounter - 1];
+
+        emit MemberJoined(msg.sender, _nickName, memberIdCounter); // Emit event
     }
 
     // Add Member
@@ -125,10 +119,12 @@ contract CryptoLibrary {
                 checkedOutBookIds: new uint[](0)
             })
         );
-        memberByAddress[msg.sender] = members[memberIdCounter - 1];
+        memberByAddress[_memberAddr] = members[memberIdCounter - 1];
+
+        emit MemberAdded(_memberAddr, _nickName, memberIdCounter); // Emit event
     }
 
-    // Check out a book
+    // Check-out a book
     function checkoutBook(uint _bookId) public {
         require(_bookId > 0 && _bookId <= bookIdCounter, "Invalid book ID");
         Book storage book = bookById[_bookId];
@@ -146,10 +142,12 @@ contract CryptoLibrary {
 
         // Update member's checked-out books
         member.checkedOutBookIds.push(_bookId);
+
+        emit BookCheckedOut(_bookId, msg.sender); // Emit event
     }
 
-    // Return a book
-    function returnBook(uint _bookId) public {
+    // Check-in a book
+    function checkinBook(uint _bookId) public {
         require(_bookId > 0 && _bookId <= bookIdCounter, "Invalid book ID");
         Book storage book = bookById[_bookId];
         Member storage member = memberByAddress[msg.sender];
@@ -163,6 +161,8 @@ contract CryptoLibrary {
 
         // Remove the book ID from the member's checked-out list
         _removeBookId(member, _bookId);
+
+        emit BookCheckedIn(_bookId, msg.sender); // Emit event
     }
 
     // Internal function to remove a book ID from the member's list
@@ -193,5 +193,27 @@ contract CryptoLibrary {
         }
 
         return checkedOutBooks;
+    }
+
+    // Admin: Add a new book to library
+    function addBook(
+        string memory _isbn,
+        string memory _title,
+        string memory _author
+    ) public onlyOwner {
+        bookIdCounter++;
+        books.push(
+            Book({
+                id: bookIdCounter,
+                isbn: _isbn,
+                title: _title,
+                author: _author,
+                owner: address(this), // Initially owned by the library
+                status: BookStatus.Available
+            })
+        );
+        bookById[bookIdCounter] = books[bookIdCounter - 1];
+
+        emit BookAdded(bookIdCounter, _isbn, _title, _author); // Emit event
     }
 }
