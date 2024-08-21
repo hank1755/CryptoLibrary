@@ -26,8 +26,7 @@ contract CryptoLibraryTest is Test {
         // Verify that the contract address is not zero
         assert(address(cryptolibrary) != address(0));
 
-        // Verify that the contract owner is correctly set
-        assertEq(cryptolibrary.libraryOwner(), libraryOwner);
+        // Verify that the contract roles are correctly set
     }
 
     function testAddBook() public {

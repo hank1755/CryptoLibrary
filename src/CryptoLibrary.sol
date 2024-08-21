@@ -3,9 +3,15 @@ pragma solidity 0.8.20;
 
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import {PriceConverter} from "./PriceConverter.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 
-contract CryptoLibrary {
-    error CryptoLibrary__NotOwner();
+contract CryptoLibrary is Pausable, AccessControlEnumerable {
+    error NotAdminOrOwner();
+    error NotOwner();
+    error NotAdmin();
+    error NotPausable();
 
     // Enums
     enum BookStatus {
@@ -49,7 +55,6 @@ contract CryptoLibrary {
     // State Variables
     Book[] public books;
     Member[] public members;
-    address public libraryOwner;
     uint public bookIdCounter;
     uint public memberIdCounter;
 
@@ -66,26 +71,38 @@ contract CryptoLibrary {
     event BookCheckedIn(uint indexed bookId, address indexed member);
 
     // Modifiers
-    modifier onlyOwner() {
-        // require(msg.sender == libraryOwner);
-        if (msg.sender != libraryOwner) revert CryptoLibrary__NotOwner();
-        _;
-    }
 
     // Mappings
     mapping(uint => Book) public bookById;
     mapping(address => Member) public memberByAddress;
 
+    // Access Control Roles
+    bytes32 public constant LIBRARY_OWNER = keccak256("LIBRARY_OWNER");
+    bytes32 public constant LIBRARY_ADMIN = keccak256("LIBRARY_ADMIN");
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+
     constructor(address[3] memory _adminAddr, string[3] memory _nickName) {
-        libraryOwner = msg.sender;
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(LIBRARY_OWNER, msg.sender);
+        _grantRole(PAUSER_ROLE, msg.sender);
 
         for (uint i = 0; i < _adminAddr.length; i++) {
             addMember(_adminAddr[i], _nickName[i], MemberRole.Admin); // 0-Member, 1-Admin, 2-Owner
+            _grantRole(LIBRARY_ADMIN, _adminAddr[i]);
         }
     }
 
+    // Contract Pause Functions
+    function pause() public onlyRole(PAUSER_ROLE) {
+        _pause();
+    }
+
+    function unpause() public onlyRole(PAUSER_ROLE) {
+        _unpause();
+    }
+
     // Self Service: Join Library
-    function joinLibrary(string memory _nickName) public {
+    function joinLibrary(string memory _nickName) external {
         memberIdCounter++;
         members.push(
             Member({
@@ -100,28 +117,6 @@ contract CryptoLibrary {
         memberByAddress[msg.sender] = members[memberIdCounter - 1];
 
         emit MemberJoined(msg.sender, _nickName, memberIdCounter); // Emit event
-    }
-
-    // Add Member
-    function addMember(
-        address _memberAddr,
-        string memory _nickName,
-        MemberRole _role
-    ) public onlyOwner {
-        memberIdCounter++;
-        members.push(
-            Member({
-                id: memberIdCounter,
-                memberAddr: _memberAddr,
-                nickName: _nickName,
-                status: MemberStatus.Good,
-                role: _role, // 0-Member, 1-Admin, 2-Owner
-                checkedOutBookIds: new uint[](0)
-            })
-        );
-        memberByAddress[_memberAddr] = members[memberIdCounter - 1];
-
-        emit MemberAdded(_memberAddr, _nickName, memberIdCounter); // Emit event
     }
 
     // Check-out a book
@@ -195,12 +190,48 @@ contract CryptoLibrary {
         return checkedOutBooks;
     }
 
+    // Add Member
+    function addMember(
+        address _memberAddr,
+        string memory _nickName,
+        MemberRole _role
+    ) public {
+        if (
+            !hasRole(LIBRARY_ADMIN, msg.sender) &&
+            !hasRole(LIBRARY_OWNER, msg.sender)
+        ) {
+            revert NotAdminOrOwner();
+        }
+
+        memberIdCounter++;
+        members.push(
+            Member({
+                id: memberIdCounter,
+                memberAddr: _memberAddr,
+                nickName: _nickName,
+                status: MemberStatus.Good,
+                role: _role, // 0-Member, 1-Admin, 2-Owner
+                checkedOutBookIds: new uint[](0)
+            })
+        );
+        memberByAddress[_memberAddr] = members[memberIdCounter - 1];
+
+        // If the new member is an Admin, grant them the admin role
+        if (_role == MemberRole.Admin) {
+            _grantRole(LIBRARY_ADMIN, _memberAddr);
+        }
+
+        emit MemberAdded(_memberAddr, _nickName, memberIdCounter); // Emit event
+    }
+
     // Admin: Add a new book to library
     function addBook(
         string memory _isbn,
         string memory _title,
         string memory _author
-    ) public onlyOwner {
+    ) public {
+        if (!hasRole(LIBRARY_ADMIN, msg.sender)) revert NotAdmin();
+
         bookIdCounter++;
         books.push(
             Book({

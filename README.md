@@ -1,8 +1,12 @@
 ## Crypto Library Project Summary
 
-**Admins:** Generate an NFT representing each added book in the library from OpenLibrary and manage library members
+Members can check-out/check-in ERC-1155 NFT's, based on attributes from OpenLibrary, representing each book added by an Admin in the library.
 
-**Users:** Check-out/Check-in NFT of available books in the library and manage their membership
+**Owner:** Contract owner and access control.
+
+**Admins:** Manage members and books.
+
+**Members:** Check-out/Check-in NFT of available books in the library and manage their own membership profile.
 
 ### Frontend: Python Classic & Responsive React
 
