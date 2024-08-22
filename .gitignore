@@ -1,8 +1,10 @@
 # Compiler files
 cache/
 out/
+out.json
 lib/
 artifacts/
+/target
 
 # Ignores development broadcast logs
 !/broadcast
@@ -54,3 +56,5 @@ remappings.txt
 
 # Ignore logs
 *.log
+
+bloat*
