@@ -32,12 +32,21 @@ Member functions:
 
 * joinLibrary: join the Crypto Library
 * checkoutBook: check-out NFT book
-* returnBook: return checked-out NFT book
+* checkinBook: return checked-out NFT book
 
 Admin functions:
 
-* addMember: Admin function: add member to Crypto Library
-* addBook: Admin function: add new book to library
+* addMember: add member to Crypto Library
+* addBook: add new book to library
+
+Owner functions:
+
+* pause: pause smart contract
+* unpause: unpause smart contract
+
+Public functions:
+
+* getCheckedOutBooks: list members checked out books
 
 Roadmap:
 

@@ -3,15 +3,12 @@ pragma solidity 0.8.20;
 
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import {PriceConverter} from "./PriceConverter.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 
-contract CryptoLibrary is Pausable, AccessControlEnumerable {
+contract CryptoLibrary is AccessControlEnumerable {
     error NotAdminOrOwner();
     error NotOwner();
     error NotAdmin();
-    error NotPausable();
 
     // Enums
     enum BookStatus {
@@ -69,6 +66,8 @@ contract CryptoLibrary is Pausable, AccessControlEnumerable {
     );
     event BookCheckedOut(uint indexed bookId, address indexed member);
     event BookCheckedIn(uint indexed bookId, address indexed member);
+    event LibraryClosed();
+    event LibraryOpen();
 
     // Modifiers
 
@@ -84,21 +83,11 @@ contract CryptoLibrary is Pausable, AccessControlEnumerable {
     constructor(address[3] memory _adminAddr, string[3] memory _nickName) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(LIBRARY_OWNER, msg.sender);
-        _grantRole(PAUSER_ROLE, msg.sender);
 
         for (uint i = 0; i < _adminAddr.length; i++) {
             addMember(_adminAddr[i], _nickName[i], MemberRole.Admin); // 0-Member, 1-Admin, 2-Owner
             _grantRole(LIBRARY_ADMIN, _adminAddr[i]);
         }
-    }
-
-    // Contract Pause Functions
-    function pause() public onlyRole(PAUSER_ROLE) {
-        _pause();
-    }
-
-    function unpause() public onlyRole(PAUSER_ROLE) {
-        _unpause();
     }
 
     // Self Service: Join Library
@@ -196,12 +185,7 @@ contract CryptoLibrary is Pausable, AccessControlEnumerable {
         string memory _nickName,
         MemberRole _role
     ) public {
-        if (
-            !hasRole(LIBRARY_ADMIN, msg.sender) &&
-            !hasRole(LIBRARY_OWNER, msg.sender)
-        ) {
-            revert NotAdminOrOwner();
-        }
+        if (!hasRole(LIBRARY_OWNER, msg.sender)) revert NotOwner();
 
         memberIdCounter++;
         members.push(
