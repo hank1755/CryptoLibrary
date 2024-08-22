@@ -1,4 +1,4 @@
-## Crypto Library Project Summary
+# Crypto Library Project Summary
 
 Members can check-out/check-in ERC-1155 NFT's, based on attributes from OpenLibrary, representing each book added by an Admin in the library.
 
@@ -8,7 +8,7 @@ Members can check-out/check-in ERC-1155 NFT's, based on attributes from OpenLibr
 
 **Members:** Check-out/Check-in NFT of available books in the library and manage their own membership profile.
 
-### Frontend: Python Classic & Responsive React
+## Frontend: Python Classic & Responsive React
 
 Use open library api to search books by ISBN and get the books data:
 
@@ -26,7 +26,7 @@ Admins will have all User functions plus:
 
 * Search for books owned by the library by status and owner
 
-### Backend: Solidity Contract Functions
+## Backend: Solidity Contract Functions
 
 Member functions:
 
