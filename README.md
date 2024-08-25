@@ -1,4 +1,4 @@
-# Crypto Library Project Summary
+# Crypto Library Project
 
 Members can check-out/check-in ERC-1155 NFT's, based on attributes from OpenLibrary, representing each book added by an Admin in the library.
 

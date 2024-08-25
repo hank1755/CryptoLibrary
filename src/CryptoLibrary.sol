@@ -4,11 +4,15 @@ pragma solidity 0.8.20;
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import {PriceConverter} from "./PriceConverter.sol";
 import "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract CryptoLibrary is AccessControlEnumerable {
-    error NotAdminOrOwner();
-    error NotOwner();
-    error NotAdmin();
+contract CryptoLibrary is AccessControlEnumerable, ReentrancyGuard {
+    error CryptoLibrary__NotAdminOrOwner();
+    error CryptoLibrary__NotOwner();
+    error CryptoLibrary__NotAdmin();
+
+    // Type Declarations
+    using PriceConverter for uint256;
 
     // Enums
     enum BookStatus {
@@ -50,10 +54,13 @@ contract CryptoLibrary is AccessControlEnumerable {
     }
 
     // State Variables
+    address public owner;
     Book[] public books;
     Member[] public members;
     uint public bookIdCounter;
     uint public memberIdCounter;
+    uint256 public constant LibraryFee = 0.1 ether; // 1 ether = 10^18 wei
+    AggregatorV3Interface private s_priceFeed;
 
     // Events
     event MemberJoined(address indexed member, string nickname, uint memberId);
@@ -70,6 +77,10 @@ contract CryptoLibrary is AccessControlEnumerable {
     event LibraryOpen();
 
     // Modifiers
+    modifier minLibraryFee() {
+        require(msg.value >= LibraryFee, "Min Library Fee of 0.1 ETH Required");
+        _;
+    }
 
     // Mappings
     mapping(uint => Book) public bookById;
@@ -80,14 +91,26 @@ contract CryptoLibrary is AccessControlEnumerable {
     bytes32 public constant LIBRARY_ADMIN = keccak256("LIBRARY_ADMIN");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
-    constructor(address[3] memory _adminAddr, string[3] memory _nickName) {
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(LIBRARY_OWNER, msg.sender);
+    constructor(
+        address priceFeed,
+        address[3] memory _adminAddr,
+        string[3] memory _nickName
+    ) {
+        owner = payable(msg.sender);
+
+        _grantRole(DEFAULT_ADMIN_ROLE, owner);
+        _grantRole(LIBRARY_OWNER, owner);
 
         for (uint i = 0; i < _adminAddr.length; i++) {
             addMember(_adminAddr[i], _nickName[i], MemberRole.Admin); // 0-Member, 1-Admin, 2-Owner
             _grantRole(LIBRARY_ADMIN, _adminAddr[i]);
         }
+
+        s_priceFeed = AggregatorV3Interface(priceFeed);
+    }
+
+    function getVersion() public view returns (uint256) {
+        return s_priceFeed.version();
     }
 
     // Self Service: Join Library
@@ -109,7 +132,9 @@ contract CryptoLibrary is AccessControlEnumerable {
     }
 
     // Check-out a book
-    function checkoutBook(uint _bookId) public {
+    function checkoutBook(
+        uint _bookId
+    ) public payable minLibraryFee nonReentrant {
         require(_bookId > 0 && _bookId <= bookIdCounter, "Invalid book ID");
         Book storage book = bookById[_bookId];
         Member storage member = memberByAddress[msg.sender];
@@ -131,13 +156,20 @@ contract CryptoLibrary is AccessControlEnumerable {
     }
 
     // Check-in a book
-    function checkinBook(uint _bookId) public {
+    function checkinBook(uint _bookId) public nonReentrant {
         require(_bookId > 0 && _bookId <= bookIdCounter, "Invalid book ID");
-        Book storage book = bookById[_bookId];
-        Member storage member = memberByAddress[msg.sender];
 
+        Book storage book = bookById[_bookId];
         require(book.owner == msg.sender, "You don't own this book");
         require(book.status == BookStatus.Borrowed, "Book is not borrowed");
+
+        uint refundAmount = 0.05 ether;
+        require(
+            address(this).balance >= refundAmount,
+            "Insufficient contract balance"
+        );
+
+        Member storage member = memberByAddress[msg.sender];
 
         // Update book status and ownership
         book.status = BookStatus.Available;
@@ -145,6 +177,10 @@ contract CryptoLibrary is AccessControlEnumerable {
 
         // Remove the book ID from the member's checked-out list
         _removeBookId(member, _bookId);
+
+        // Safely transfer the refund amount to the user
+        (bool success, ) = msg.sender.call{value: refundAmount}("");
+        require(success, "Refund transfer failed");
 
         emit BookCheckedIn(_bookId, msg.sender); // Emit event
     }
@@ -179,13 +215,41 @@ contract CryptoLibrary is AccessControlEnumerable {
         return checkedOutBooks;
     }
 
+    // Get member profile
+    function getMemberProfile(
+        address _memberAddr
+    )
+        public
+        view
+        returns (
+            uint memberId,
+            address memberAddr,
+            string memory memberNickName,
+            MemberRole memberRole,
+            MemberStatus memberStatus,
+            uint[] memory memberBooksCheckedOut
+        )
+    {
+        Member storage member = memberByAddress[_memberAddr];
+
+        return (
+            member.id,
+            member.memberAddr,
+            member.nickName,
+            member.role,
+            member.status,
+            member.checkedOutBookIds
+        );
+    }
+
     // Add Member
     function addMember(
         address _memberAddr,
         string memory _nickName,
         MemberRole _role
     ) public {
-        if (!hasRole(LIBRARY_OWNER, msg.sender)) revert NotOwner();
+        if (!hasRole(LIBRARY_OWNER, msg.sender))
+            revert CryptoLibrary__NotOwner();
 
         memberIdCounter++;
         members.push(
@@ -214,7 +278,8 @@ contract CryptoLibrary is AccessControlEnumerable {
         string memory _title,
         string memory _author
     ) public {
-        if (!hasRole(LIBRARY_ADMIN, msg.sender)) revert NotAdmin();
+        if (!hasRole(LIBRARY_ADMIN, msg.sender))
+            revert CryptoLibrary__NotAdmin();
 
         bookIdCounter++;
         books.push(
